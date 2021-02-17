@@ -27,12 +27,15 @@ class BulkCreateModelMixin(CreateModelMixin):
 
         if not bulk:
             return super(BulkCreateModelMixin, self).create(request, *args, **kwargs)
-
         else:
-            serializer = self.get_serializer(data=request.data, many=True)
-            serializer.is_valid(raise_exception=True)
-            self.perform_bulk_create(serializer)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return_data = []
+            # alex mooloo
+            for list_el in request.data:
+                serializer = self.get_serializer(data=list_el)
+                serializer.is_valid(raise_exception=True)
+                self.perform_bulk_create(serializer)
+                return_data.append(serializer.data)
+            return Response(return_data, status=status.HTTP_201_CREATED)
 
     def perform_bulk_create(self, serializer):
         return self.perform_create(serializer)
@@ -62,17 +65,22 @@ class BulkUpdateModelMixin(object):
 
     def bulk_update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
-
-        # restrict the update to the filtered queryset
-        serializer = self.get_serializer(
-            self.filter_queryset(self.get_queryset()),
-            data=request.data,
-            many=True,
-            partial=partial,
-        )
-        serializer.is_valid(raise_exception=True)
-        self.perform_bulk_update(serializer)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        queryset = self.get_queryset()
+        return_data = []
+        i = 0
+        # alex mooloo
+        for list_el in request.data:
+            # restrict the update to the filtered queryset
+            serializer = self.get_serializer(
+                self.filter_queryset(queryset[i]),
+                data=list_el,
+                partial=partial,
+            )
+            serializer.is_valid(raise_exception=True)
+            self.perform_bulk_update(serializer)
+            return_data.append(serializer.data)
+            i = i + 1
+        return Response(return_data, status=status.HTTP_200_OK)
 
     def partial_bulk_update(self, request, *args, **kwargs):
         kwargs['partial'] = True
